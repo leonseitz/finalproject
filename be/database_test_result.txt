@@ -1,0 +1,28 @@
+============================================================
+DATABASE CONNECTION TEST
+============================================================
+
+[1] Connection: SUCCESS
+    Database: finalproject
+    Host: localhost:5432
+    Username: postgres
+    Version: PostgreSQL 16.11
+
+[2] Tables Check:
+    Found 7 tables:
+    - users
+    - personal_detail
+    - videos
+    - fitness
+    - exercise_reps
+    - exercise_feedback
+    - scores
+
+[3] Query Test:
+    Users: 0 records
+    Videos: 0 records
+    Fitness: 0 records
+
+============================================================
+RESULT: DATABASE CONNECTION SUCCESSFUL!
+============================================================

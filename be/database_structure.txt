@@ -1,0 +1,123 @@
+
+============================================================
+Table: users
+============================================================
+Columns (3):
+  - user_id: INTEGER NOT NULL
+  - username: VARCHAR(50) NOT NULL
+  - created_at: TIMESTAMP NULL
+
+Primary Key: user_id
+
+============================================================
+Table: personal_detail
+============================================================
+Columns (6):
+  - user_id: INTEGER NOT NULL
+  - height: NUMERIC(5, 2) NULL
+  - weight: NUMERIC(5, 2) NULL
+  - gender: VARCHAR(10) NULL
+  - age: INTEGER NULL
+  - created_at: TIMESTAMP NULL
+
+Foreign Keys (1):
+  - ['user_id'] -> users.['user_id']
+
+Primary Key: user_id
+
+============================================================
+Table: videos
+============================================================
+Columns (5):
+  - video_id: INTEGER NOT NULL
+  - user_id: INTEGER NOT NULL
+  - fitness_id: INTEGER NOT NULL
+  - video_path: TEXT NOT NULL
+  - created_at: TIMESTAMP NULL
+
+Foreign Keys (2):
+  - ['fitness_id'] -> fitness.['fitness_id']
+  - ['user_id'] -> users.['user_id']
+
+Primary Key: video_id
+
+============================================================
+Table: fitness
+============================================================
+Columns (2):
+  - fitness_id: INTEGER NOT NULL
+  - fitness_name: VARCHAR(100) NOT NULL
+
+Primary Key: fitness_id
+
+============================================================
+Table: exercise_reps
+============================================================
+Columns (5):
+  - rep_id: INTEGER NOT NULL
+  - video_id: INTEGER NOT NULL
+  - rep_number: INTEGER NOT NULL
+  - is_correct: BOOLEAN NULL
+  - created_at: TIMESTAMP NULL
+
+Foreign Keys (1):
+  - ['video_id'] -> videos.['video_id']
+
+Primary Key: rep_id
+
+============================================================
+Table: exercise_feedback
+============================================================
+Columns (5):
+  - feedback_id: INTEGER NOT NULL
+  - rep_id: INTEGER NOT NULL
+  - feedback_text: TEXT NOT NULL
+  - severity_level: INTEGER NULL
+  - created_at: TIMESTAMP NULL
+
+Foreign Keys (1):
+  - ['rep_id'] -> exercise_reps.['rep_id']
+
+Primary Key: feedback_id
+
+============================================================
+Table: scores
+============================================================
+Columns (5):
+  - score_id: INTEGER NOT NULL
+  - video_id: INTEGER NOT NULL
+  - total_score: NUMERIC(5, 2) NULL
+  - accuracy: NUMERIC(5, 2) NULL
+  - created_at: TIMESTAMP NULL
+
+Foreign Keys (1):
+  - ['video_id'] -> videos.['video_id']
+
+Primary Key: score_id
+
+============================================================
+Table: Videos
+============================================================
+Columns (7):
+  - video_id: INTEGER NOT NULL
+  - user_id: INTEGER NULL
+  - fit_id: INTEGER NULL
+  - video: VARCHAR(500) NULL
+  - target_reps: INTEGER NULL
+  - target_time_sec: INTEGER NULL
+  - created_at: TIMESTAMP NULL
+
+Foreign Keys (2):
+  - ['fit_id'] -> Fitness.['fit_id']
+  - ['user_id'] -> users.['user_id']
+
+Primary Key: video_id
+
+============================================================
+Table: Fitness
+============================================================
+Columns (2):
+  - fit_id: INTEGER NOT NULL
+  - fit_name: VARCHAR(255) NULL
+
+Primary Key: fit_id
