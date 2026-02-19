@@ -28,15 +28,20 @@ export default function SettingsPage() {
     {
       title: "บัญชี",
       items: [
-        { label: "ข้อมูลส่วนตัว", icon: User, color: "text-blue-400", bg: "bg-blue-400/10" },
-        { label: "การแจ้งเตือน", icon: Bell, color: "text-orange-400", bg: "bg-orange-400/10" },
-        { label: "ความเป็นส่วนตัว", icon: Shield, color: "text-purple-400", bg: "bg-purple-400/10" },
+        { label: "ข้อมูลส่วนตัว", icon: User, color: "text-blue-400", bg: "bg-blue-400/10", path: "/settings/profile" },
+        { label: "การแจ้งเตือน", icon: Bell, color: "text-orange-400", bg: "bg-orange-400/10", path: "/settings/notifications" },
+        { label: "ความเป็นส่วนตัว", icon: Shield, color: "text-purple-400", bg: "bg-purple-400/10", path: "/settings/privacy" },
       ]
     },
+    // Future sections:
+    // - Language (ภาษา): ไทย/English
+    // - Appearance (ธีม): Light/Dark mode
     {
       title: "ความช่วยเหลือ",
       items: [
-        { label: "ศูนย์ช่วยเหลือ", icon: CircleHelp, color: "text-green-400", bg: "bg-green-400/10" },
+        { label: "ศูนย์ช่วยเหลือ", icon: CircleHelp, color: "text-green-400", bg: "bg-green-400/10", path: "/settings/help" },
+        // Future items:
+        // - About (เกี่ยวกับ): App version, Terms of Service
       ]
     }
   ];
@@ -50,7 +55,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Card */}
-      <div className="rounded-3xl bg-[#1c2333] p-6 mb-8 flex items-center gap-4 border border-[#1f293a]">
+      <div 
+        onClick={() => router.push("/settings/profile")}
+        className="rounded-3xl bg-[#1c2333] p-6 mb-8 flex items-center gap-4 border border-[#1f293a] cursor-pointer hover:bg-[#232d42] transition-colors"
+      >
         <div className="h-16 w-16 overflow-hidden rounded-2xl border-2 border-cyan-500/30 bg-gray-700 flex items-center justify-center text-xl font-bold text-white">
            {user?.username ? user.username[0].toUpperCase() : "U"}
         </div>
@@ -58,7 +66,7 @@ export default function SettingsPage() {
           <h2 className="text-lg font-bold text-white">
             {user?.personal_detail?.fname && user?.personal_detail?.lname 
               ? `${user.personal_detail.fname} ${user.personal_detail.lname}` 
-              : user?.username || "นักกีฬา ตัวอย่าง"}
+              : user?.username}
           </h2>
           {/* <p className="text-sm text-cyan-400">สมาชิกพรีเมียม</p> */}
         </div>
@@ -101,7 +109,8 @@ export default function SettingsPage() {
               {section.items.map((item, itemIdx) => (
                 <button
                   key={itemIdx}
-                  className={`w-full flex items-center justify-between p-4 hover:bg-[#232d42] transition-colors ${
+                  onClick={() => item.path && router.push(item.path)}
+                  className={`w-full flex items-center justify-between p-4 hover:bg-[#232d42] transition-colors cursor-pointer ${
                     itemIdx !== section.items.length - 1 ? "border-b border-[#1f293a]" : ""
                   }`}
                 >

@@ -14,6 +14,15 @@ class UserCreate(UserBase):
     height: Optional[float] = None
     weight: Optional[float] = None
 
+class UserUpdate(BaseModel):
+    fname: Optional[str] = None
+    lname: Optional[str] = None
+    age: Optional[int] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    username: Optional[str] = None
+
+
 class UserLogin(BaseModel):
     identifier: str # Can be username or email
     password: str

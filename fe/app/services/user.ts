@@ -30,3 +30,28 @@ export const getUserProfile = async () => {
     return null;
   }
 };
+
+export const updateUserProfile = async (data: any) => {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${API_URL}/users/me`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        throw new Error("Failed to update user profile");
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    throw error;
+  }
+};
