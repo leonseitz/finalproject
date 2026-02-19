@@ -460,3 +460,74 @@ async def get_video(
         raise HTTPException(status_code=404, detail="Video file not found on server")
 
     return FileResponse(file_path, media_type="video/webm")
+
+@router.get("/session/{video_id}")
+def get_session_details(
+    video_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Get Video & Score & Type Name
+    from app.models.score import Score
+    from sqlalchemy import String, cast
+    
+    # Query Video joined with Exercise_type
+    result = db.query(Video, cast(Exercise_type.type_name, String).label("type_name"))\
+        .join(Exercise_type, Video.type_id == Exercise_type.type_id)\
+        .filter(Video.video_id == video_id)\
+        .first()
+        
+    if not result:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    video, type_name = result
+        
+    # Check ownership
+    if video.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this session")
+
+    score = db.query(Score).filter(Score.video_id == video_id).first()
+    
+    # 2. Get Reps
+    reps = db.query(ExerciseRep).filter(ExerciseRep.video_id == video_id).order_by(ExerciseRep.rep_number).all()
+    
+    # 3. Get Feedbacks (Collect all feedbacks from all reps)
+    feedbacks = []
+    reps_data = []
+    
+    for rep in reps:
+        # Rep Details
+        reps_data.append({
+            "rep_no": rep.rep_number,
+            "score": rep.score,
+            "duration": rep.duration_sec,
+            "warnings": rep.warning_count
+        })
+        
+        # Feedback Details
+        for fb in rep.feedbacks:
+            feedbacks.append({
+                "timestamp": fb.timestamp_in_video,
+                "message": f"{fb.body_part}: {fb.issue}",
+                "rep_no": rep.rep_number
+            })
+            
+    # Sort feedbacks by timestamp
+    feedbacks.sort(key=lambda x: x['timestamp'] or 0)
+    
+    return {
+        "video_id": video.video_id,
+        "type_name": type_name, # Added field
+        "duration": video.duration_sec,
+        "date": video.started_at,
+        "score": {
+            "total": score.total_score if score else 0,
+            "accuracy": score.accuracy_percent if score else 0,
+            "max": score.max_score if score else 0,
+            "min": score.min_score if score else 0,
+            "avg": score.avg_score if score else 0
+        },
+        "reps": reps_data,
+        "feedbacks": feedbacks
+    }
+
