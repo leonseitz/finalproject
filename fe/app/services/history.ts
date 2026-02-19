@@ -20,6 +20,7 @@ export interface SessionDetails {
   }[];
   feedbacks: {
     timestamp: number;
+    timestamp_start_rep: number; // Added field
     message: string;
     rep_no: number;
   }[];

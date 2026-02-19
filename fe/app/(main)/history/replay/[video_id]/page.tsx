@@ -205,7 +205,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                         {sessionData?.feedbacks.map((fb, idx) => (
                             <div 
                                 key={idx} 
-                                onClick={() => seekTo(fb.timestamp)}
+                                onClick={() => seekTo(fb.timestamp_start_rep)}
                                 className="group cursor-pointer flex items-start gap-3 p-3 rounded-xl bg-[#151a25] border border-gray-800 hover:bg-[#1a202e] hover:border-cyan-500/30 transition-all"
                             >
                                 <div className="mt-1 h-2 w-2 rounded-full bg-orange-500 shrink-0" />

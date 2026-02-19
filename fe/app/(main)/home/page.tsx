@@ -99,15 +99,15 @@ export default function HomePage() {
           <p className="text-gray-400 text-sm">พร้อมออกกำลังกายวันนี้แล้วหรือยัง?</p>
         </div>
         <div className="flex items-center gap-4">
-          <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1f293a] text-gray-400 hover:text-white transition-colors">
+          <Link href="/settings/notifications" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1f293a] text-gray-400 hover:text-white transition-colors">
             <Bell className="h-5 w-5" />
-          </button>
-          <div className="h-10 w-10 overflow-hidden rounded-xl border border-gray-700 bg-gray-600">
+          </Link>
+          <Link href="/settings/profile" className="h-10 w-10 overflow-hidden rounded-xl border border-gray-700 bg-gray-600 cursor-pointer hover:border-cyan-500 transition-colors">
              {/* Placeholder for User Avatar */}
              <div className="h-full w-full flex items-center justify-center bg-gray-700 text-xs text-white">
                {user?.username ? user.username[0].toUpperCase() : "U"}
              </div>
-          </div>
+          </Link>
         </div>
       </div>
 

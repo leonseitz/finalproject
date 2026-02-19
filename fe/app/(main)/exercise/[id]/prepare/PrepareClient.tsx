@@ -52,10 +52,10 @@ export default function PrepareClient() {
       </div>
 
       {/* Exercise Title Card */}
-      <div className="mb-8 rounded-3xl bg-linear-to-br from-cyan-500 to-blue-600 p-6 shadow-lg">
+      <div className="mb-4 rounded-3xl bg-linear-to-br from-cyan-500 to-blue-600 p-6 shadow-lg">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md">
-            <exercise.icon className="h-8 w-8 text-white fill-current" />
+            <exercise.icon className="h-8 w-8 text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-white leading-tight">{exercise.title_th}</h2>
@@ -66,7 +66,7 @@ export default function PrepareClient() {
 
       {/* Side Selection (Only for Bicep Curl) */}
       {exerciseId === 1 && (
-        <div className="mb-8">
+        <div className="mb-4">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <Activity className="h-5 w-5 text-cyan-400" />
             เลือกข้างที่ต้องการเล่น

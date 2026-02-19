@@ -495,22 +495,29 @@ def get_session_details(
     feedbacks = []
     reps_data = []
     
+    current_time = 0.0 # Track start time of current rep
+    
     for rep in reps:
         # Rep Details
         reps_data.append({
             "rep_no": rep.rep_number,
             "score": rep.score,
             "duration": rep.duration_sec,
-            "warnings": rep.warning_count
+            "warnings": rep.warning_count,
+            "start_time": current_time # Start time of this rep
         })
         
         # Feedback Details
         for fb in rep.feedbacks:
             feedbacks.append({
                 "timestamp": fb.timestamp_in_video,
+                "timestamp_start_rep": current_time, # Added field: Start time of the rep containing this feedback
                 "message": f"{fb.body_part}: {fb.issue}",
                 "rep_no": rep.rep_number
             })
+            
+        # Update current_time for next rep
+        current_time += float(rep.duration_sec or 0)
             
     # Sort feedbacks by timestamp
     feedbacks.sort(key=lambda x: x['timestamp'] or 0)

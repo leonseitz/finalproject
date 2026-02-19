@@ -1,4 +1,4 @@
-import { Dumbbell, Activity, Timer, Zap, Footprints } from "lucide-react";
+import { Dumbbell, Activity, Timer, Zap, Footprints, ArrowUpDown } from "lucide-react";
 
 export const EXERCISE_DATA: Record<number, any> = {
   1: {
@@ -8,7 +8,7 @@ export const EXERCISE_DATA: Record<number, any> = {
     reps: "15 ครั้ง",
     duration: "10 นาที",
     color: "bg-blue-500",
-    icon: Activity,
+    icon: Dumbbell,
     iconColor: "text-blue-400",
     iconBg: "bg-blue-400/10",
     description: "การงอแขนเพื่อฝึกกล้ามเนื้อ Biceps โดยใช้ดัมเบลหรือบาร์เบล",
@@ -38,7 +38,7 @@ export const EXERCISE_DATA: Record<number, any> = {
     reps: "30 ครั้ง",
     duration: "15 นาที",
     color: "bg-orange-500",
-    icon: Dumbbell,
+    icon: ArrowUpDown,
     iconColor: "text-orange-400",
     iconBg: "bg-orange-400/10",
     description: "การดันพื้นเพื่อสร้างกล้ามเนื้อหน้าอก หัวไหล่ และหลังแขน",
