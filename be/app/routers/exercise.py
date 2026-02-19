@@ -101,7 +101,8 @@ async def websocket_endpoint(websocket: WebSocket, exercise_id: int):
                     
                     elif "landmarks" in command_data:
                         if tracker:
-                            tracker.process_landmarks(command_data["landmarks"])
+                            timestamp = command_data.get("timestamp", 0)
+                            tracker.process_landmarks(command_data["landmarks"], timestamp_ms=timestamp)
                             
                             # Get stats
                             stats = tracker.get_stats()
@@ -208,6 +209,7 @@ async def upload_video(
     score_data: str = Form(default="{}"), # JSON string of session summary
     target_type: str = Form(default="reps"),
     target_value: int = Form(default=0),
+    auto_stop: bool = Form(default=True), # Default to True as per user request context
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -233,7 +235,7 @@ async def upload_video(
     active_goal = db.query(ExerciseGoal).filter(
         ExerciseGoal.user_id == current_user.user_id,
         ExerciseGoal.type_id == exercise_id,
-        ExerciseGoal.status == 'active'
+        ExerciseGoal.status.is_(None)
     ).first()
 
     # If no active goal, create one automatically based on session parameters
@@ -254,8 +256,8 @@ async def upload_video(
                 target_type=target_type,
                 target_reps=target_reps,
                 target_time_sec=target_time_sec,
-                status='active',
-                auto_stop=False 
+                status=None,
+                auto_stop=auto_stop 
             )
             db.add(active_goal)
             db.commit()
@@ -327,30 +329,29 @@ async def upload_video(
     # Update Goal Status if active goal exists
     if active_goal:
         try:
-            is_goal_met = False
+            status = 0 # Default FAIL
             
             # Check based on target type
             if active_goal.target_type == 'reps':
-                # Check if reps count meets target
-                # For Bicep/Squat/PushUp/PullUp, this is straightforward
-                # For Plank, we treated session as 1 rep, but Plank is usually 'time' based.
-                # If Plank has 'reps' goal (unlikely but possible), it would be 1.
-                if total_reps_count >= active_goal.target_reps:
-                    is_goal_met = True
+                if total_reps_count > active_goal.target_reps:
+                    status = 2 # EXCEED
+                elif total_reps_count == active_goal.target_reps:
+                    status = 1 # SUCCESS
+                else: # < target
+                    status = 0 # FAIL
             
             elif active_goal.target_type == 'time':
-                # Check if total duration meets target time
-                # Duration passed from frontend is in 'duration' form field (video duration)
-                # But for Plank, we might want the 'hold time' which is also roughly the video duration
-                # or better, the sum of rep durations (which for Plank is the hold time)
-                if duration >= active_goal.target_time_sec:
-                    is_goal_met = True
+                if duration > active_goal.target_time_sec:
+                    # For time, maybe exceeding is also good? Or is it "holding too long"?
+                    # Usually holding longer is better/exceed.
+                    status = 2 # EXCEED
+                elif duration == active_goal.target_time_sec:
+                    status = 1 # SUCCESS 
+                else:
+                    status = 0 # FAIL
             
             # Update status
-            if is_goal_met:
-                active_goal.status = 'success'
-            else:
-                active_goal.status = 'fail'
+            active_goal.status = status
                 
             db.add(active_goal)
             db.commit()

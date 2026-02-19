@@ -14,9 +14,10 @@ function RecordContent() {
   const exerciseId = Number(params.id);
   const exercise = EXERCISE_DATA[exerciseId];
   
-  const targetValue = searchParams.get("target") || "0";
+  const targetValue = Number(searchParams.get("target") || "0");
   const targetType = searchParams.get("type") || "reps";
   const side = searchParams.get("side") || "both"; // อ่านค่าพารามิเตอร์ข้าง (side)
+  const autoStop = searchParams.get("auto_stop") === "true"; // ตรวจสอบค่า auto_stop
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -49,18 +50,18 @@ function RecordContent() {
     if (isRecording) {
       startTimeRef.current = Date.now(); // Set start time
       interval = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000));
+        const now = Date.now();
+        const elapsed = Math.floor((now - (startTimeRef.current || now)) / 1000);
+        setElapsedTime(elapsed);
+
+        // Auto Stop for Time Target
+        if (autoStop && targetType === "time" && targetValue > 0 && elapsed >= targetValue) {
+             toggleRecording(); // Stop recording
+        }
       }, 1000);
-    } else {
-      // Don't reset elapsedTime here immediately, let it stay for UI or reset on new start
-      if (!isRecordingRef.current) {
-          // Only reset if we truly stopped? 
-          // Actually, we want to keep it 0 when idle, but we need the final value for upload.
-          // Better approach: reset it when STARTING, not stopping.
-      }
-    }
+    } 
     return () => clearInterval(interval);
-  }, [isRecording]);
+  }, [isRecording, autoStop, targetType, targetValue]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -286,8 +287,15 @@ function RecordContent() {
             
             // ส่งไปที่ Backend
             if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                const now = Date.now();
+                // Calculate timestamp in milliseconds if recording, otherwise 0
+                const timestamp = isRecordingRef.current && startTimeRef.current 
+                    ? now - startTimeRef.current 
+                    : 0;
+                
                 wsRef.current.send(JSON.stringify({ 
-                    landmarks: landmarks 
+                    landmarks: landmarks,
+                    timestamp: timestamp
                 }));
             }
         } else {
@@ -337,6 +345,11 @@ function RecordContent() {
           const data = JSON.parse(event.data);
           if (isRecordingRef.current && data.count !== undefined) {
             setCurrentCount(data.count);
+            
+            // Auto Stop for Reps Target
+            if (autoStop && targetType === "reps" && targetValue > 0 && data.count >= targetValue) {
+                 toggleRecording();
+            }
           }
           if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
             setWarnings(data.warnings);
@@ -421,7 +434,8 @@ function RecordContent() {
 
       // Attach Goal Target Info (to create goal if missing)
       formData.append("target_type", targetType);
-      formData.append("target_value", targetValue);
+      formData.append("target_value", targetValue.toString());
+      formData.append("auto_stop", autoStop ? "true" : "false");
 
       // Dynamic URL construction
       const protocol = window.location.protocol === "https:" ? "https:" : "http:";
@@ -460,7 +474,7 @@ function RecordContent() {
   };
 
   const toggleRecording = () => {
-    if (!isRecording) {
+    if (!isRecordingRef.current) {
       // เริ่มบันทึก (START RECORDING)
       if (!stream) return;
 

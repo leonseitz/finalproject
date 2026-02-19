@@ -1,5 +1,5 @@
 import { DailyStats } from "@/app/services/stats";
-import { Activity, Flame, Target, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Activity, Flame, Target, AlertCircle, CheckCircle, XCircle, Trophy, Dumbbell } from "lucide-react";
 
 interface DailyViewProps {
   stats: DailyStats;
@@ -18,6 +18,13 @@ export default function DailyView({ stats }: DailyViewProps) {
 
   return (
     <div className="space-y-6">
+      {/* Date Header */}
+      <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-xl font-bold text-white">
+              {new Date(stats.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </h2>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Score */}
@@ -37,8 +44,8 @@ export default function DailyView({ stats }: DailyViewProps) {
             <Activity className="h-4 w-4" /> เวลาที่ใช้
           </div>
           <div className="text-2xl font-bold text-white">{formatDuration(stats.total_duration_sec)}</div>
-          <div className="text-xs text-gray-500">
-             {Math.round(stats.total_duration_sec / 60)} นาที
+          <div className={`text-xs ${stats.comparison.time_vs_avg >= 0 ? "text-green-400" : "text-red-400"}`}>
+             {stats.comparison.time_vs_avg >= 0 ? "+" : "-"}{formatDuration(Math.abs(stats.comparison.time_vs_avg))} จากค่าเฉลี่ย
           </div>
         </div>
 
@@ -48,21 +55,61 @@ export default function DailyView({ stats }: DailyViewProps) {
             <Flame className="h-4 w-4" /> แคลอรี่
           </div>
           <div className="text-2xl font-bold text-white">{stats.calories_burned}</div>
-          <div className="text-xs text-gray-500">kcal (ประมาณ)</div>
+          <div className={`text-xs ${stats.comparison.calories_vs_avg >= 0 ? "text-green-400" : "text-red-400"}`}>
+             {stats.comparison.calories_vs_avg >= 0 ? "+" : ""}{Math.round(stats.comparison.calories_vs_avg)} จากค่าเฉลี่ย
+          </div>
         </div>
         
-        {/* Accuracy */}
+        {/* Total Reps */}
         <div className="rounded-2xl bg-[#1c2333] p-4 flex flex-col gap-2">
             <div className="flex items-center gap-2 text-gray-400 text-xs">
-                <CheckCircle className="h-4 w-4" /> ความแม่นยำ
+                <Dumbbell className="h-4 w-4" /> จำนวนครั้งรวม
             </div>
             <div className="text-2xl font-bold text-white">
-                {Math.round(stats.mistake_summary.accuracy)}%
+                {stats.mistake_summary.total_reps}
             </div>
-            <div className="text-xs text-gray-500">
-                {stats.mistake_summary.correct_reps}/{stats.mistake_summary.total_reps} ครั้งที่ถูกต้อง
+            <div className={`text-xs ${stats.comparison.reps_vs_avg >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {stats.comparison.reps_vs_avg >= 0 ? "+" : ""}{Math.round(stats.comparison.reps_vs_avg)} จากค่าเฉลี่ย
             </div>
         </div>
+      </div>
+
+      {/* Best Session Card */}
+      <div className="rounded-3xl bg-linear-to-br from-teal-600 to-emerald-700 p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="relative z-10">
+               <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="h-5 w-5 text-yellow-300 fill-yellow-300" />
+                  <span className="text-xs font-semibold uppercase tracking-wider opacity-90">
+                      สถิติที่ดีที่สุดของวันนี้
+                  </span>
+              </div>
+              
+              {stats.best_session ? (
+                  <>
+                    <h3 className="text-xl font-bold mb-1">{stats.best_session.exercise}</h3>
+                    <p className="text-sm opacity-90">
+                        คะแนนสูงสุด {stats.best_session.score.toLocaleString()} คะแนน 
+                        ({stats.best_session.reps} ครั้ง)
+                    </p>
+                    <div className="mt-3 inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-medium backdrop-blur-md">
+                        {Math.floor(stats.best_session.duration_sec / 60)}m {stats.best_session.duration_sec % 60}s
+                    </div>
+                  </>
+              ) : (
+                  <>
+                     <h3 className="text-xl font-bold mb-1">ยังไม่มีสถิติวันนี้</h3>
+                     <p className="text-sm opacity-90">
+                        เริ่มออกกำลังกายเพื่อสร้างสถิติใหม่ของวัน!
+                     </p>
+                  </>
+              )}
+          </div>
+          
+          {/* Background Decoration */}
+           <div className="absolute top-[-20px] right-[-20px] h-32 w-32 rounded-full bg-white/10 blur-3xl" />
+           <div className="absolute bottom-[-10px] right-2 transform rotate-12 opacity-20">
+             <Trophy className="h-24 w-24" />
+           </div>
       </div>
 
       {/* Mistake Analysis */}
@@ -91,7 +138,7 @@ export default function DailyView({ stats }: DailyViewProps) {
                 style={{ width: `${stats.mistake_summary.accuracy}%` }}
              />
           </div>
-          <div className="mt-2 text-right text-xs text-gray-500">
+          <div className="mt-2 text-right text-sm text-gray-200">
              ความแม่นยำรวม {Math.round(stats.mistake_summary.accuracy)}%
           </div>
         </div>
@@ -100,7 +147,7 @@ export default function DailyView({ stats }: DailyViewProps) {
         <div className="rounded-3xl bg-[#1c2333] p-6">
            <h3 className="font-bold text-white mb-4 flex items-center gap-2">
              <AlertCircle className="h-5 w-5 text-orange-400" />
-             ข้อผิดพลาดที่พบบ่อย
+             ข้อผิดพลาดที่พบ
            </h3>
            
            {stats.common_mistakes.length === 0 ? (
@@ -115,7 +162,9 @@ export default function DailyView({ stats }: DailyViewProps) {
                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-bold">
                                    {idx + 1}
                                </div>
-                               <span className="text-sm text-gray-300">{item.issue}</span>
+                               <span className="text-sm text-white">
+                                   {item.issue} <span className="text-gray-400">({item.exercise_name})</span>
+                               </span>
                            </div>
                            <span className="text-xs font-bold text-white bg-black/20 px-2 py-1 rounded-md">
                                {item.count} ครั้ง

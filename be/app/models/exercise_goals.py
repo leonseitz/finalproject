@@ -13,7 +13,7 @@ class ExerciseGoal(Base):
     target_reps = Column(Integer, default=0) # จำนวน
     target_time_sec = Column(Integer, default=0) # ระยะเวลา
     auto_stop = Column(Boolean, default=False) # ทำที่หลังว่าหยุดอัตโนมัติไหม
-    status = Column(String(20), default="active")  # success fail
+    status = Column(Integer, nullable=True, default=None)  # None=active, 0=fail, 1=success, 2=exceed
     created_at = Column(DateTime, server_default=func.now())
 
     # --- Relationships ---

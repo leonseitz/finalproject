@@ -117,14 +117,18 @@ class BaseTracker(ABC):
         self.is_tracking = False  # To control when to start counting
         self.current_rep_start_time = None # Initialize to avoid AttributeError
 
-    def process_landmarks(self, landmarks_data):
+    def process_landmarks(self, landmarks_data, timestamp_ms=0):
         """
         Process landmarks directly (from client-side detection)
         Args:
             landmarks_data: List of dicts {'x':.., 'y':.., 'z':.., 'visibility':..}
+            timestamp_ms: Timestamp of the frame in milliseconds
         """
         if not landmarks_data:
             return None
+            
+        # Update timestamp
+        self.frame_timestamp_ms = timestamp_ms
 
         # Convert simple dicts to Landmark objects
         self.latest_landmarks = [
@@ -238,7 +242,7 @@ class BaseTracker(ABC):
         self.current_rep_feedbacks.append({
             "body_part": body_part,
             "issue": issue,
-            "timestamp": int(now_sec)
+            "timestamp": round(now_sec, 2)
         })
 
     def _finish_rep(self, rep_count):

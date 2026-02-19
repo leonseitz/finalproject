@@ -16,6 +16,7 @@ export default function PrepareClient() {
   const [targetType, setTargetType] = useState<"reps" | "time">(initialTargetType);
   const [val, setVal] = useState("");
   const [side, setSide] = useState<"both" | "left" | "right">("right");
+  const [autoStop, setAutoStop] = useState(true);
 
   useEffect(() => {
     setTargetType(initialTargetType);
@@ -34,7 +35,7 @@ export default function PrepareClient() {
       alert("กรุณาตั้งเป้าหมายก่อนเริ่มออกกำลังกาย");
       return;
     }
-    router.push(`/exercise/${exerciseId}/record?target=${val}&type=${targetType}&side=${side}`);
+    router.push(`/exercise/${exerciseId}/record?target=${val}&type=${targetType}&side=${side}&auto_stop=${autoStop}`);
   };
 
   return (
@@ -110,6 +111,18 @@ export default function PrepareClient() {
             />
             <span className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
               {targetType === "reps" ? "ครั้ง" : "วินาที"}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between bg-[#0f172a] rounded-2xl p-4 mb-6 border border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-6 rounded-full p-1 transition-colors ${autoStop ? 'bg-cyan-500' : 'bg-gray-600'}`} onClick={() => setAutoStop(!autoStop)} role="button">
+                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${autoStop ? 'translate-x-4' : ''}`} />
+              </div>
+              <span className="text-sm font-medium text-gray-300">หยุดอัตโนมัติเมื่อครบ</span>
+            </div>
+            <span className="text-xs text-gray-500">
+              {autoStop ? "เปิดใช้งาน" : "ปิดใช้งาน"}
             </span>
           </div>
 

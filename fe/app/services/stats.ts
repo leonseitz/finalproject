@@ -13,16 +13,25 @@ export interface DailyStats {
   total_exercises: number;
   calories_burned: number;
   exercise_stats: ExerciseStat[];
+  best_session?: {
+    exercise: string;
+    reps: number;
+    score: number;
+    duration_sec: number;
+    date: string;
+  };
   mistake_summary: {
     total_reps: number;
     correct_reps: number;
     incorrect_reps: number;
     accuracy: number;
   };
-  common_mistakes: { issue: string; count: number }[];
+  common_mistakes: { issue: string; exercise_name: string; count: number }[];
   comparison: {
     score_vs_avg: number;
     time_vs_avg: number;
+    calories_vs_avg: number;
+    reps_vs_avg: number;
   };
 }
 
@@ -34,6 +43,13 @@ export interface MonthlyStats {
   calories_burned: number;
   activity_trend: { date: string; score: number; duration: number }[];
   exercise_distribution: { name: string; value: number }[];
+  best_session?: {
+    exercise: string;
+    reps: number;
+    score: number;
+    duration_sec: number;
+    date: string;
+  } | null;
 }
 
 const getAuthHeaders = () => {

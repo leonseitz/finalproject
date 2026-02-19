@@ -54,7 +54,9 @@ def get_daily_stats(
                 "common_mistakes": [],
                 "comparison": {
                     "score_vs_avg": 0,
-                    "time_vs_avg": 0
+                    "time_vs_avg": 0,
+                    "calories_vs_avg": 0,
+                    "reps_vs_avg": 0
                 }
             }
 
@@ -63,19 +65,36 @@ def get_daily_stats(
         total_duration = sum(v.duration_sec for v in videos if v.duration_sec)
         
         # 2. Mistakes Analysis
-        # Get all feedbacks for these videos
-        feedbacks = db.query(ExerciseFeedback).join(ExerciseRep).filter(
-            ExerciseRep.video_id.in_(video_ids)
+        # Get all feedbacks for these videos with exercise type info
+        feedbacks = db.query(ExerciseFeedback.issue, Exercise_type.type_name).join(
+            ExerciseRep, ExerciseFeedback.rep_id == ExerciseRep.rep_id
+        ).join(
+            Video, ExerciseRep.video_id == Video.video_id
+        ).join(
+            Exercise_type, Video.type_id == Exercise_type.type_id
+        ).filter(
+            Video.video_id.in_(video_ids)
         ).all()
         
         mistake_counts = {}
-        for fb in feedbacks:
-            if fb.issue:
-                mistake_counts[fb.issue] = mistake_counts.get(fb.issue, 0) + 1
+        for issue, type_name in feedbacks:
+            if issue:
+                # Handle Enum or String for type_name
+                import enum
+                if isinstance(type_name, enum.Enum):
+                    exercise_name = type_name.value
+                else:
+                    exercise_name = str(type_name)
+                    
+                key = (issue, exercise_name)
+                mistake_counts[key] = mistake_counts.get(key, 0) + 1
                 
         # Top 3 Common Mistakes
         sorted_mistakes = sorted(mistake_counts.items(), key=lambda x: x[1], reverse=True)
-        common_mistakes = [{"issue": k, "count": v} for k, v in sorted_mistakes[:3]]
+        common_mistakes = [
+            {"issue": k[0], "exercise_name": k[1], "count": v} 
+            for k, v in sorted_mistakes[:3]
+        ]
         
         # 3. Correct vs Incorrect
         total_reps_count = db.query(ExerciseRep).filter(ExerciseRep.video_id.in_(video_ids)).count()
@@ -101,8 +120,16 @@ def get_daily_stats(
             
         user_total_duration = sum(v.duration_sec for v in all_videos if v.duration_sec)
         
+        # Calculate Total Reps across all history
+        user_total_reps = db.query(func.count(ExerciseRep.rep_id)).join(Video).filter(
+             Video.user_id == current_user.user_id
+        ).scalar() or 0
+
         avg_daily_score = user_total_score / distinct_days if distinct_days > 0 else 0
         avg_daily_duration = user_total_duration / distinct_days if distinct_days > 0 else 0
+        avg_daily_reps = user_total_reps / distinct_days if distinct_days > 0 else 0
+        # Calories approx formula: duration * 0.15
+        avg_daily_calories = avg_daily_duration * 0.15
         
         # 5. Exercise Breakdown
         exercise_types = db.query(Exercise_type).all()
@@ -143,6 +170,39 @@ def get_daily_stats(
             import traceback
             traceback.print_exc()
 
+        # 6. Best Session of the Day
+        best_session = None
+        try:
+            best_video_row = db.query(Video, Score, Exercise_type)\
+                .join(Score, Video.video_id == Score.video_id)\
+                .join(Exercise_type, Video.type_id == Exercise_type.type_id)\
+                .filter(Video.video_id.in_(video_ids))\
+                .order_by(desc(Score.total_score))\
+                .first()
+
+            if best_video_row:
+                video_obj, score_obj, type_obj = best_video_row
+                
+                # Count reps
+                reps_count = db.query(func.count(ExerciseRep.rep_id))\
+                    .filter(ExerciseRep.video_id == video_obj.video_id)\
+                    .scalar() or 0
+
+                # Safe type name
+                import enum
+                type_name = type_obj.type_name
+                type_name_str = type_name.value if isinstance(type_name, enum.Enum) else str(type_name)
+
+                best_session = {
+                    "exercise": type_name_str,
+                    "reps": reps_count,
+                    "score": score_obj.total_score,
+                    "duration_sec": video_obj.duration_sec,
+                    "date": video_obj.started_at.isoformat()
+                }
+        except Exception as e:
+            print(f"Error calculating best session: {e}")
+
         return {
             "date": target_date,
             "total_score": total_score,
@@ -150,6 +210,7 @@ def get_daily_stats(
             "total_exercises": len(video_ids), 
             "calories_burned": int(total_duration * 0.15),
             "exercise_stats": exercise_stats,
+            "best_session": best_session,
             "mistake_summary": {
                 "total_reps": total_reps_count,
                 "correct_reps": correct_reps,
@@ -159,7 +220,9 @@ def get_daily_stats(
             "common_mistakes": common_mistakes,
             "comparison": {
                 "score_vs_avg": total_score - avg_daily_score,
-                "time_vs_avg": total_duration - avg_daily_duration
+                "time_vs_avg": total_duration - avg_daily_duration,
+                "calories_vs_avg": int(total_duration * 0.15) - avg_daily_calories,
+                "reps_vs_avg": total_reps_count - avg_daily_reps
             }
         }
     except Exception as e:
@@ -248,6 +311,38 @@ def get_monthly_stats(
      
     exercise_distribution = [{"name": name, "value": count} for name, count in type_counts]
     
+    # 4. Best Session of the Month
+    best_session = None
+    try:
+        best_video_row = db.query(Video, Score, Exercise_type)\
+            .join(Score, Video.video_id == Score.video_id)\
+            .join(Exercise_type, Video.type_id == Exercise_type.type_id)\
+            .filter(Video.video_id.in_(video_ids))\
+            .order_by(desc(Score.total_score))\
+            .first()
+
+        if best_video_row:
+            video_obj, score_obj, type_obj = best_video_row
+            
+            # Count reps
+            reps_count = db.query(func.count(ExerciseRep.rep_id))\
+                .filter(ExerciseRep.video_id == video_obj.video_id)\
+                .scalar() or 0
+
+            import enum
+            type_name = type_obj.type_name
+            type_name_str = type_name.value if isinstance(type_name, enum.Enum) else str(type_name)
+
+            best_session = {
+                "exercise": type_name_str,
+                "reps": reps_count,
+                "score": score_obj.total_score,
+                "duration_sec": video_obj.duration_sec,
+                "date": video_obj.started_at.isoformat()
+            }
+    except Exception as e:
+        print(f"Error calculating monthly best session: {e}")
+
     return {
         "year": year,
         "month": month,
@@ -255,5 +350,6 @@ def get_monthly_stats(
         "total_duration": total_duration,
         "calories_burned": int(total_duration * 0.15),
         "activity_trend": activity_trend,
-        "exercise_distribution": exercise_distribution
+        "exercise_distribution": exercise_distribution,
+        "best_session": best_session
     }

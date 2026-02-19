@@ -11,6 +11,15 @@ export default function DashboardPage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily");
   
+  // Default to today in YYYY-MM-DD format
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  // Default to current month in YYYY-MM format
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    new Date().toISOString().slice(0, 7)
+  );
+  
   const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,10 +30,13 @@ export default function DashboardPage() {
     setError("");
     try {
         if (viewMode === "daily") {
-            const data = await getDailyStats();
+            // Pass selectedDate to getDailyStats
+            const data = await getDailyStats(selectedDate);
             setDailyStats(data);
         } else {
-            const data = await getMonthlyStats();
+            // Parse selectedMonth (YYYY-MM)
+            const [year, month] = selectedMonth.split("-").map(Number);
+            const data = await getMonthlyStats(month, year);
             setMonthlyStats(data);
         }
     } catch (err: any) {
@@ -41,7 +53,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-  }, [viewMode]);
+  }, [viewMode, selectedDate, selectedMonth]); // Add selectedMonth to dependencies
 
   return (
     <div className="flex flex-col p-6 font-sans min-h-screen">
@@ -52,30 +64,55 @@ export default function DashboardPage() {
           <p className="text-gray-400 text-sm">วิเคราะห์ประสิทธิภาพการฝึกของคุณ</p>
         </div>
         
-        {/* View Switcher */}
-        <div className="flex p-1 bg-[#1c2333] rounded-xl self-start md:self-auto">
-            <button 
-                onClick={() => setViewMode("daily")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    viewMode === "daily" 
-                    ? "bg-cyan-500/10 text-cyan-400" 
-                    : "text-gray-400 hover:text-white"
-                }`}
-            >
-                <Calendar className="h-4 w-4" />
-                รายวัน
-            </button>
-            <button 
-                onClick={() => setViewMode("monthly")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    viewMode === "monthly" 
-                    ? "bg-cyan-500/10 text-cyan-400" 
-                    : "text-gray-400 hover:text-white"
-                }`}
-            >
-                <FileChartColumn className="h-4 w-4" />
-                รายเดือน
-            </button>
+        {/* Controls */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 self-start md:self-auto">
+            {/* Date/Month Picker */}
+            <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Calendar className="h-4 w-4 text-cyan-400/70 group-hover:text-cyan-400 transition-colors" />
+                </div>
+                {viewMode === "daily" ? (
+                    <input 
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="bg-[#1c2333] text-white text-sm rounded-2xl pl-10 pr-4 py-2.5 border border-gray-800/50 shadow-sm focus:outline-hidden focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all cursor-pointer hover:bg-[#232d42] h-[46px] appearance-none"
+                    />
+                ) : (
+                    <input 
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-[#1c2333] text-white text-sm rounded-2xl pl-10 pr-4 py-2.5 border border-gray-800/50 shadow-sm focus:outline-hidden focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all cursor-pointer hover:bg-[#232d42] h-[46px] appearance-none"
+                    />
+                )}
+            </div>
+
+            {/* View Switcher */}
+            <div className="flex p-1 bg-[#1c2333] rounded-2xl border border-gray-800/50 shadow-sm">
+                <button 
+                    onClick={() => setViewMode("daily")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        viewMode === "daily" 
+                        ? "bg-cyan-500/10 text-cyan-400 shadow-inner" 
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                >
+                    <Calendar className="h-4 w-4" />
+                    รายวัน
+                </button>
+                <button 
+                    onClick={() => setViewMode("monthly")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        viewMode === "monthly" 
+                        ? "bg-cyan-500/10 text-cyan-400 shadow-inner" 
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                >
+                    <FileChartColumn className="h-4 w-4" />
+                    รายเดือน
+                </button>
+            </div>
         </div>
       </div>
 
