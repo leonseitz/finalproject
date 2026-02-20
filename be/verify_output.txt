@@ -1,0 +1,28 @@
+--- Verifying Exercise Types ---
+ID: 1, Name: ExerciseEnumList.bicep_curl
+ID: 2, Name: ExerciseEnumList.squat
+ID: 3, Name: ExerciseEnumList.push_up
+ID: 4, Name: ExerciseEnumList.pull_up
+ID: 5, Name: ExerciseEnumList.plank
+✅ Plank type (ID 5) found.
+
+--- Verifying Recent Videos (Type 5) ---
+Video ID: 95, Created: 2026-02-20 13:27:14.160083, Goal ID: 56
+  - Reps count: 1
+    - Rep 1: Score=1, Warning=11
+  - Score: Total=1, Avg=1.00, Accuracy=0.00
+Video ID: 92, Created: 2026-02-20 13:14:27.152418, Goal ID: 53
+  - Reps count: 0
+  ❌ Score NOT FOUND for this video
+Video ID: 91, Created: 2026-02-20 13:01:51.980953, Goal ID: 52
+  - Reps count: 1
+    - Rep 1: Score=1, Warning=2
+  - Score: Total=0, Avg=1.00, Accuracy=0.00
+Video ID: 90, Created: 2026-02-20 13:01:03.088177, Goal ID: 51
+  - Reps count: 1
+    - Rep 1: Score=1, Warning=2
+  - Score: Total=0, Avg=1.00, Accuracy=0.00
+Video ID: 87, Created: 2026-02-20 12:52:49.882534, Goal ID: 48
+  - Reps count: 1
+    - Rep 1: Score=1, Warning=2
+  - Score: Total=0, Avg=1.00, Accuracy=0.00

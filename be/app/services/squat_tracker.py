@@ -17,6 +17,20 @@ class SquatTracker(BaseTracker):
         try:
             config = SQUAT_CONFIG
             
+            # Check visibility of key landmarks
+            # Squat relies on side view (usually left side)
+            key_points = [
+                LANDMARKS['LEFT_SHOULDER'],
+                LANDMARKS['LEFT_HIP'],
+                LANDMARKS['LEFT_KNEE'],
+                LANDMARKS['LEFT_ANKLE']
+            ]
+            
+            for point_idx in key_points:
+                if landmarks[point_idx].visibility < 0.5:
+                    self.warning_message = "ไม่พบจุดตรวจจับ"
+                    return frame
+
             # Calculate knee angle
             knee_angle = self.calculate_angle(
                 landmarks[LANDMARKS['LEFT_HIP']],

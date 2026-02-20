@@ -112,8 +112,19 @@ export default function ReplayPage({ params }: ReplayPageProps) {
       </div> 
 
       {sessionData?.type_name && (
-        <div className="mb-4 pl-2">
+        <div className="mb-4 pl-2 flex items-center gap-3">
              <h2 className="text-2xl font-bold text-cyan-400">{sessionData.type_name}</h2>
+             {sessionData.goal_status !== undefined && sessionData.goal_status !== null && (
+                <div className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                    sessionData.goal_status === 0 ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                    sessionData.goal_status === 1 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                    sessionData.goal_status === 2 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : ""
+                }`}>
+                    {sessionData.goal_status === 0 ? "ต่ำกว่าเป้าที่ตั้ง" :
+                     sessionData.goal_status === 1 ? "สำเร็จตามเป้าหมาย" :
+                     sessionData.goal_status === 2 ? "ทำได้เกินเป้าหมาย" : ""}
+                </div>
+             )}
         </div>
       )}
 

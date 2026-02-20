@@ -210,12 +210,22 @@ async def upload_video(
     target_type: str = Form(default="reps"),
     target_value: int = Form(default=0),
     auto_stop: bool = Form(default=True), # Default to True as per user request context
+    valid_duration: int = Form(default=0), # Time with good form (from frontend)
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Upload recorded video file and save tracking data to database"""
     # Create uploads directory if not exists
     upload_dir = Path("uploads") / str(exercise_id)
+    print(f"DEBUG: upload_video called for Ex {exercise_id}. Duration={duration}, ValidDuration={valid_duration}")
+
+    # ... (skipping file save logic for brevity in replacement, but preserving lines 218-360 logic below) ...
+    # Wait, I cannot skip lines. I need to replace the function definition block and the goal check block.
+    # But they are far apart. I should use MultiReplace or just replace the specific chunks.
+    # Let's use MultiReplace since I have two distinct changes.
+    pass 
+    # Actually I will use single replace for the signature first.
+
     upload_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate unique filename
@@ -288,9 +298,18 @@ async def upload_video(
     total_reps_count = 0
     total_score_sum = 0
     
+    # 3. Save Reps and Feedback
+    # We need to calculate totals to update goal status
+    total_reps_count = 0
+    total_score_sum = 0
+    reps_list = [] # Initialize explicitly
+    
     try:
-        print(f"Received reps_data: {reps_data}")
-        reps_list = json.loads(reps_data)
+        try:
+            reps_list = json.loads(reps_data)
+        except:
+            reps_list = []
+            
         if reps_list:
             from app.models.exercise_feedback import ExerciseFeedback
             
@@ -309,7 +328,6 @@ async def upload_video(
                 db.add(new_rep)
                 db.commit()
                 db.refresh(new_rep)
-                print(f"Saved rep {new_rep.rep_id}")
                 
                 # Save Feedbacks for this rep
                 feedbacks = rep.get('feedbacks', [])
@@ -341,12 +359,28 @@ async def upload_video(
                     status = 0 # FAIL
             
             elif active_goal.target_type == 'time':
-                if duration > active_goal.target_time_sec:
-                    # For time, maybe exceeding is also good? Or is it "holding too long"?
-                    # Usually holding longer is better/exceed.
-                    status = 2 # EXCEED
-                elif duration == active_goal.target_time_sec:
-                    status = 1 # SUCCESS 
+                # For time-based goals (Plank), video 'duration' includes pauses!
+                # PRIORITY 1: use 'valid_duration' from frontend (RecordClient) - most accurate
+                # PRIORITY 2: sum of rep durations from analysis
+                # PRIORITY 3: video duration (fallback, least/inaccurate)
+                
+                final_valid_duration = 0
+                if valid_duration > 0:
+                    final_valid_duration = valid_duration
+                elif reps_list:
+                     final_valid_duration = sum(r.get('duration', 0) for r in reps_list)
+                else:
+                    final_valid_duration = duration # Fallback
+                
+                print(f"Goal Check: Target={active_goal.target_time_sec}, ValidDuration={final_valid_duration}, TotalDuration={duration}")
+
+                # Use a larger buffer (3 sec) to match Frontend's warning grace period
+                # If user survives until 7s of a 10s Plank, counting the 3s warning buffer, it's virtually 10s.
+                
+                if final_valid_duration >= active_goal.target_time_sec + 5:
+                    status = 2 # EXCEED (Only if held significantly longer than target)
+                elif final_valid_duration >= active_goal.target_time_sec - 3: # Allow 3s under-shoot as success
+                    status = 1 # SUCCESS
                 else:
                     status = 0 # FAIL
             
@@ -363,7 +397,6 @@ async def upload_video(
 
     # 4. Save Overall Score
     try:
-        print(f"Received score_data: {score_data}")
         score_info = json.loads(score_data)
         # allow saving even if 0 reps
         if score_info: 
@@ -521,12 +554,21 @@ def get_session_details(
             
     # Sort feedbacks by timestamp
     feedbacks.sort(key=lambda x: x['timestamp'] or 0)
+
+    # 4. Get Goal Status
+    goal_status = None
+    if video.goal_id:
+        from app.models.exercise_goals import ExerciseGoal
+        goal = db.query(ExerciseGoal).filter(ExerciseGoal.goal_id == video.goal_id).first()
+        if goal:
+            goal_status = goal.status
     
     return {
         "video_id": video.video_id,
         "type_name": type_name, # Added field
         "duration": video.duration_sec,
         "date": video.started_at,
+        "goal_status": goal_status, # Added field
         "score": {
             "total": score.total_score if score else 0,
             "accuracy": score.accuracy_percent if score else 0,

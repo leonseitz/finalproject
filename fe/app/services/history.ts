@@ -24,6 +24,7 @@ export interface SessionDetails {
     message: string;
     rep_no: number;
   }[];
+  goal_status?: number | null; // Added field
 }
 
 export const getSessionDetails = async (videoId: string): Promise<SessionDetails> => {

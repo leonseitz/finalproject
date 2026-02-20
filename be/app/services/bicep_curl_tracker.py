@@ -40,6 +40,25 @@ class BicepCurlTracker(BaseTracker):
             config = BICEP_CURL_CONFIG
             current_time = time.time()
             
+            # Check visibility of key landmarks based on tracking side
+            # Standard MediaPipe visibility threshold is 0.5
+            
+            # Define key points for each side
+            left_points = [LANDMARKS['LEFT_SHOULDER'], LANDMARKS['LEFT_ELBOW'], LANDMARKS['LEFT_WRIST'], LANDMARKS['LEFT_HIP']]
+            right_points = [LANDMARKS['RIGHT_SHOULDER'], LANDMARKS['RIGHT_ELBOW'], LANDMARKS['RIGHT_WRIST'], LANDMARKS['RIGHT_HIP']]
+            
+            points_to_check = []
+            if self.tracking_side in ["both", "left"]:
+                points_to_check.extend(left_points)
+            if self.tracking_side in ["both", "right"]:
+                points_to_check.extend(right_points)
+                
+            for point_idx in points_to_check:
+                if landmarks[point_idx].visibility < 0.5:
+                    self.warning_message_left = "ไม่พบจุดตรวจจับ" if self.tracking_side in ["left", "both"] else ""
+                    self.warning_message_right = "ไม่พบจุดตรวจจับ" if self.tracking_side in ["right", "both"] else ""
+                    return frame
+
             # --- LEFT ARM PROCESSING ---
             if self.tracking_side in ["both", "left"]:
                 # คำนวณมุมข้อศอกซ้าย (LEFT ARM)

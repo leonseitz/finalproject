@@ -1,7 +1,7 @@
 "use client";
 
 import { EXERCISE_DATA } from "@/constants/exerciseData";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, StopCircle, Play, AlertCircle, CheckCircle2 } from "lucide-react";
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
@@ -44,24 +44,61 @@ function RecordContent() {
   const [landmarker, setLandmarker] = useState<PoseLandmarker | null>(null);
   const [isLandmarkerLoaded, setIsLandmarkerLoaded] = useState(false);
 
-  // ระบบจับเวลา
+  const [validDuration, setValidDuration] = useState(0); // เวลาที่นับได้จริง (ไม่มีคำเตือน)
+  const warningStartTimeRef = useRef<number | null>(null); // เวลาเริ่มมีคำเตือน
+  const isAutoStoppedRef = useRef(false); // Track if stopped automatically
+
+  // ระบบจับเวลา (Smart Timer)
+  // ใช้ warningsRef เพื่อแก้ปัญหา Closure ใน setInterval
+  const warningsRef = useRef<string[]>([]);
+  useEffect(() => { warningsRef.current = warnings; }, [warnings]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
+
     if (isRecording) {
-      startTimeRef.current = Date.now(); // Set start time
+      if (startTimeRef.current === null) startTimeRef.current = Date.now(); // Ensure start time set
+
       interval = setInterval(() => {
         const now = Date.now();
+        
+        // 1. STATUS Time (Elapsed Time) - เดินตลอดเวลา
         const elapsed = Math.floor((now - (startTimeRef.current || now)) / 1000);
         setElapsedTime(elapsed);
 
-        // Auto Stop for Time Target
-        if (autoStop && targetType === "time" && targetValue > 0 && elapsed >= targetValue) {
-             toggleRecording(); // Stop recording
+        // 2. COUNT/SEC Time (Valid Duration) - หยุดเมื่อมีคำเตือนนานเกิน 3 วินาที
+        const currentWarnings = warningsRef.current;
+        
+        // ตรวจสอบสถานะคำเตือน
+        if (currentWarnings.length > 0) {
+            if (warningStartTimeRef.current === null) {
+                warningStartTimeRef.current = now;
+            }
+        } else {
+            warningStartTimeRef.current = null;
+        }
+
+        // เช็คว่าเตือนนานเกิน 3 วินาทีหรือยัง
+        const isWarningPersist = warningStartTimeRef.current !== null && (now - warningStartTimeRef.current > 3000);
+
+        if (!isWarningPersist) {
+            // ถ้านับเวลาถูกต้อง ให้เพิ่ม Valid Duration
+            setValidDuration(prev => {
+                const newVal = prev + 1;
+                return newVal;
+            });
         }
       }, 1000);
-    } 
+    } else {
+        // Reset Logic when not recording
+        setValidDuration(0);
+        setElapsedTime(0);
+        warningStartTimeRef.current = null;
+    }
     return () => clearInterval(interval);
   }, [isRecording, autoStop, targetType, targetValue]);
+
+
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -400,6 +437,17 @@ function RecordContent() {
   }, [stream, landmarker]);
   */
 
+
+  useEffect(() => {
+      // WebSocket Listener Code...
+      // (This part is inside another useEffect in the original file, I shouldn't duplicate it here. I'm just replacing the definition block of isAutoStoppedRef if I were inserting it, but I need to be careful with line numbers)
+      // Actually, I should just insert the Ref definition at the top and update usages.
+      // Wait, I can't easily insert at line 49 without seeing lines 47-49.
+      // I see lines 47-49 in the view_file output.
+  }, []); 
+
+  // ... (Skipping to uploadVideo)
+
   const uploadVideo = async (videoBlob: Blob) => {
     try {
       const token = localStorage.getItem("token");
@@ -416,11 +464,19 @@ function RecordContent() {
       const formData = new FormData();
       formData.append("exercise_id", exerciseId.toString());
       
+      
       // Calculate duration from start to stop (or current time if stop time missing)
       const endTime = stopTimeRef.current || Date.now();
       const durationSec = startTimeRef.current ? Math.floor((endTime - startTimeRef.current) / 1000) : 0;
       
       formData.append("duration", durationSec.toString());
+      // Send Valid Duration (for Goal Status Check)
+      // We use validDuration state which tracks the "green" time
+      // Ensure validDuration is a valid number, default to 0 if NaN
+      const cleanValidDuration = (validDuration && !isNaN(validDuration)) ? Math.round(validDuration) : 0;
+      formData.append("valid_duration", cleanValidDuration.toString());
+      console.log("Uploading video with valid_duration:", cleanValidDuration);
+
       formData.append("video_file", videoBlob, `exercise_${exerciseId}.webm`);
       
       // Attach tracking data
@@ -435,7 +491,7 @@ function RecordContent() {
       // Attach Goal Target Info (to create goal if missing)
       formData.append("target_type", targetType);
       formData.append("target_value", targetValue.toString());
-      formData.append("auto_stop", autoStop ? "true" : "false");
+      formData.append("auto_stop", isAutoStoppedRef.current ? "true" : "false"); // Use actual stop status
 
       // Dynamic URL construction
       const protocol = window.location.protocol === "https:" ? "https:" : "http:";
@@ -473,40 +529,43 @@ function RecordContent() {
     }
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = useCallback(() => {
     if (!isRecordingRef.current) {
       // เริ่มบันทึก (START RECORDING)
-      if (!stream) return;
-
       setIsRecording(true);
       isRecordingRef.current = true;
       setFeedback("ระบบกำลังเริ่มบันทึก...");
       setWarnings([]);
+      setValidDuration(0); // Reset timer
       setCurrentCount(0); // รีเซ็ตตัวนับในเครื่อง
       setElapsedTime(0); // Reset time on start
       startTimeRef.current = Date.now();
-      stopTimeRef.current = null;
+      warningStartTimeRef.current = null; // Reset warning timer
+      isAutoStoppedRef.current = false; // Reset auto stop flag
       
       // Clear previous data
       summaryDataRef.current = null;
+      chunksRef.current = [];
       pendingVideoBlobRef.current = null;
 
-      // ส่งสัญญาณเริ่มไปยัง Backend พร้อมระบุข้าง (Side)
+      // Start Tracking in Backend
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ 
-          command: "START_TRACKING",
-          side: side 
-        }));
+          wsRef.current.send(JSON.stringify({ 
+            command: "START_TRACKING",
+            target_type: targetType,
+            target_value: targetValue
+          }));
       }
 
-      // ตั้งค่า MediaRecorder สำหรับบันทึกไฟล์คุณภาพสูง
-      // หมายเหตุ: เราต้องขอสิทธิ์เสียงแยกต่างหากถ้าต้องการเสียง
-      // แต่ตอนนี้ stream ตั้งค่า audio: false ไว้
+      // Start MediaRecorder
+      if (!stream) return;
+      
       try {
-        const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
-        chunksRef.current = [];
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data);
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunksRef.current.push(event.data);
+          }
         };
         recorder.onstop = () => {
           const completeBlob = new Blob(chunksRef.current, { type: "video/webm" });
@@ -552,7 +611,16 @@ function RecordContent() {
 
       if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
     }
-  };
+  }, [stream, targetType, targetValue, uploadVideo, setIsRecording, setFeedback, setWarnings, setValidDuration, setCurrentCount, setElapsedTime]);
+
+  // Separate Effect for Auto Stop to handle side effects cleanly
+  useEffect(() => {
+      if (isRecording && autoStop && targetType === "time" && targetValue > 0 && validDuration >= targetValue) {
+          console.log("Auto-Stop Triggered: Limit Reached");
+          isAutoStoppedRef.current = true; // Mark as auto-stopped
+          toggleRecording();
+      }
+  }, [validDuration, isRecording, autoStop, targetType, targetValue, toggleRecording]);
 
 
   if (!exercise) return null;
@@ -647,7 +715,7 @@ function RecordContent() {
           <div className="flex-1 bg-[#1c2333] rounded-2xl px-2 flex flex-col items-center justify-center border border-[#2a3449] shadow-md">
             <p className="text-gray-400 text-[9px] font-bold uppercase tracking-tighter mb-0.5">COUNT</p>
             <h3 className="text-white text-2xl font-black leading-none">
-              {currentCount}<span className="text-xs font-normal text-gray-500 ml-0.5">/{targetValue}</span>
+              {targetType === "time" ? validDuration : currentCount}<span className="text-xs font-normal text-gray-500 ml-0.5">/{targetValue}</span>
             </h3>
             <p className="text-cyan-400 text-[8px] font-bold mt-1 uppercase tracking-widest leading-none">
               {targetType === "reps" ? "REPS" : "SEC"}

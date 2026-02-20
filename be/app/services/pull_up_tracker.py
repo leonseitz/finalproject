@@ -17,6 +17,21 @@ class PullUpTracker(BaseTracker):
         try:
             config = PULL_UP_CONFIG
             
+            # Check visibility of key landmarks
+            # Pull-up relies on back/front view but acts similar to other upper body checks
+            # We check left side chain for consistency as per other trackers
+            key_points = [
+                LANDMARKS['LEFT_SHOULDER'],
+                LANDMARKS['LEFT_ELBOW'],
+                LANDMARKS['LEFT_WRIST'],
+                LANDMARKS['LEFT_HIP']
+            ]
+            
+            for point_idx in key_points:
+                if landmarks[point_idx].visibility < 0.5:
+                    self.warning_message = "ไม่พบจุดตรวจจับ"
+                    return frame, None, None
+
             # Calculate elbow angle
             elbow_angle = self.calculate_angle(
                 landmarks[LANDMARKS['LEFT_SHOULDER']],

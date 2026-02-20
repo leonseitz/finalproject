@@ -7,6 +7,7 @@ import time
 class PlankTracker(BaseTracker):
     """Tracker for plank exercise - measures hold time"""
     
+    
     def __init__(self):
         super().__init__()
         self.exercise_name = "Plank"
@@ -14,12 +15,34 @@ class PlankTracker(BaseTracker):
         self.elapsed_time = 0
         self.paused_time = 0
         self.is_paused = False
+        self.pause_count = 0  # Track number of times form was broken
+        
+        # Grace Period Logic
+        self.warning_start_time = 0
+        self.penalty_applied = False
     
     def _track_exercise(self, landmarks, frame):
         """Track plank exercise - time-based instead of reps"""
         try:
             config = PLANK_CONFIG
             
+            # Check visibility of key landmarks
+            # Plank relies on side view (usually left side for now)
+            key_points = [
+                LANDMARKS['LEFT_SHOULDER'],
+                LANDMARKS['LEFT_ELBOW'],
+                LANDMARKS['LEFT_WRIST'],
+                LANDMARKS['LEFT_HIP'],
+                LANDMARKS['LEFT_KNEE']
+            ]
+            
+            for point_idx in key_points:
+                if landmarks[point_idx].visibility < 0.5:
+                    self.warning_message = "ไม่พบจุดตรวจจับ"
+                    # Return early/skip calculation if points are not visible
+                    # But we must return the expected tuple
+                    return frame, 0, 0
+
             # Calculate elbow angle
             elbow_angle = self.calculate_angle(
                 landmarks[LANDMARKS['LEFT_SHOULDER']],
@@ -46,11 +69,45 @@ class PlankTracker(BaseTracker):
                 self.warning_message += config['warnings']['back_not_straight']
                 self.add_feedback("Back", "Not straight")
 
-            # Track plank time
-            if (self.is_tracking and 
+            # Determine Raw Form Status
+            raw_is_good = (
+                self.is_tracking and 
                 config['elbow_angle_min'] < elbow_angle < config['elbow_angle_max'] and 
-                config['body_angle_min'] < body_angle < config['body_angle_max']):
-                # Good form - start or continue timing
+                config['body_angle_min'] < body_angle < config['body_angle_max']
+            )
+
+            # Grace Period Logic: Determine Effective Status
+            effective_is_good = False
+            
+            if raw_is_good:
+                # Good form: Reset warning/penalty states
+                self.warning_start_time = 0
+                self.penalty_applied = False
+                effective_is_good = True
+            else:
+                # Bad form: Check grace period
+                if self.warning_start_time == 0:
+                    self.warning_start_time = time.time()
+                
+                time_in_warning = time.time() - self.warning_start_time
+                
+                if time_in_warning > 3.0:
+                    # Exceeded grace period -> Real Bad Form
+                    effective_is_good = False
+                    
+                    # Apply penalty once per violation
+                    if not self.penalty_applied:
+                        self.pause_count += 1
+                        self.penalty_applied = True
+                        print(f"Plank paused: Form break #{self.pause_count} (Duration > 3s)")
+                else:
+                    # Within grace period -> Treat as Good Form (don't stop timer yet)
+                    effective_is_good = True
+
+
+            # Track plank time based on Effective Status
+            if effective_is_good:
+                # Start or continue timing
                 if self.is_paused:
                     self.plank_start_time += time.time() - self.paused_time
                     self.is_paused = False
@@ -58,27 +115,12 @@ class PlankTracker(BaseTracker):
                     self.plank_start_time = time.time()
                 self.elapsed_time = time.time() - self.plank_start_time
             else:
-                # Bad form - pause timing
+                # Pause timing
                 if not self.is_paused and self.plank_start_time != 0:
                     self.paused_time = time.time()
                     self.is_paused = True
+                    # Penalty already applied above
                     
-            # Display metrics (Commented out for JSON output)
-            # cv2.putText(frame, f'Time: {int(self.elapsed_time)} s', (10, 100),
-            #             DISPLAY_CONFIG['font'], DISPLAY_CONFIG['font_scale'],
-            #             DISPLAY_CONFIG['count_label_color'], DISPLAY_CONFIG['font_thickness'])
-            # cv2.putText(frame, f'Elbow Angle: {int(elbow_angle)}', (10, 130),
-            #             DISPLAY_CONFIG['font'], DISPLAY_CONFIG['font_scale'],
-            #             DISPLAY_CONFIG['angle_label_color'], DISPLAY_CONFIG['font_thickness'])
-            # cv2.putText(frame, f'Body Angle: {int(body_angle)}', (10, 160),
-            #             DISPLAY_CONFIG['font'], DISPLAY_CONFIG['font_scale'],
-            #             DISPLAY_CONFIG['angle_label_color'], DISPLAY_CONFIG['font_thickness'])
-            
-            # if self.warning_message:
-            #     cv2.putText(frame, self.warning_message, (10, 190),
-            #                 DISPLAY_CONFIG['font'], DISPLAY_CONFIG['font_scale'],
-            #                 DISPLAY_CONFIG['warning_label_color'], DISPLAY_CONFIG['font_thickness'])
-
             return frame, elbow_angle, body_angle
         except Exception as e:
             print("Error calculating plank angle:", e)
@@ -92,38 +134,36 @@ class PlankTracker(BaseTracker):
     def get_session_summary(self):
         """
         Override to return a single 'rep' representing the whole plank session
+        with scoring based on pauses and duration.
         """
-        # Create a single rep entry for the requested duration
         # Score calculation for Plank:
-        # 5 = Perfect (No warnings)
-        # 3 = Minor warnings (1 type of warning)
-        # 1 = Major warnings (2+ types or frequent)
+        # Quality Score based on Pauses:
+        # 0 Pauses = 5 (Perfect)
+        # 1 Pause = 3 (Minor issues)
+        # >1 Pauses = 1 (Major issues)
         
-        # We can estimate warnings based on total feedbacks or unique issues
-        # For now let's use the standard feedback list
-        
-        # Aggregate all feedbacks
-        all_feedbacks = []
-        # Since we didn't store feedbacks in current_rep_feedbacks using add_feedback in _track_exercise the same way as reps?
-        # partial check: base_tracker's add_feedback appends to self.current_rep_feedbacks
-        # PlankTracker calls self.add_feedback
-        # So self.current_rep_feedbacks should contain all warnings from the session (since we never called _finish_rep to clear it)
-        
-        unique_issues = set(f['issue'] for f in self.current_rep_feedbacks)
-        warning_count = len(unique_issues)
-        
-        score = 5
-        if warning_count == 1:
-            score = 3
-        elif warning_count >= 2:
-            score = 1
+        quality_score = 5
+        if self.pause_count == 1:
+            quality_score = 3
+        elif self.pause_count > 1:
+            quality_score = 1
             
-        # Create the single rep data
+        # usage of self.current_rep_feedbacks might be tricky here since we don't finish reps
+        # All feedbacks are accumulating in self.current_rep_feedbacks via add_feedback
+        
+        # Calculate "Virtual Reps" based on duration (e.g., 10 seconds = 1 rep)
+        # using max(1, ...) to ensure at least 1 rep if detailed
+        virtual_reps = max(1, int(self.elapsed_time / 10))
+        
+        # Total Score = Quality Score * Virtual Reps
+        total_score = quality_score * virtual_reps
+            
+        # Create the single rep data representing the session
         rep_data = {
             "rep_number": 1,
-            "score": score,
+            "score": quality_score, # Store quality score here for "average" display
             "duration": round(self.elapsed_time, 2),
-            "warning_count": warning_count,
+            "warning_count": self.pause_count, # Use pause count as warning metric
             "feedbacks": list(self.current_rep_feedbacks),
             "timestamp": time.time()
         }
@@ -131,8 +171,12 @@ class PlankTracker(BaseTracker):
         single_rep_history = [rep_data]
         
         return {
-            "total_reps": 1, # 1 session
-            "average_score": score,
+            "total_reps": virtual_reps, 
+            "total_score": total_score,
+            "average_score": quality_score,
+            "max_score": quality_score, 
+            "min_score": quality_score,
+            "accuracy_percent": 100 if self.pause_count == 0 else (50 if self.pause_count == 1 else 0), # Rough estimate
             "reps_history": single_rep_history,
             "total_time": round(self.elapsed_time, 2)
         }
@@ -144,3 +188,8 @@ class PlankTracker(BaseTracker):
         self.elapsed_time = 0
         self.paused_time = 0
         self.is_paused = False
+        self.pause_count = 0
+        
+        # Reset Grace Period
+        self.warning_start_time = 0
+        self.penalty_applied = False
