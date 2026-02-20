@@ -8,6 +8,6 @@ pydantic-settings==2.1.0
 python-dotenv==1.0.0
 python-multipart==0.0.6
 passlib[bcrypt]==1.7.4
-mediapipe==0.10.9
+mediapipe==0.10.32
 opencv-python==4.9.0.80
 numpy==1.26.4
