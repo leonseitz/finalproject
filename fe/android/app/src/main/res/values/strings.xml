@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">FitTracker</string>
-    <string name="title_activity_main">FitTracker</string>
-    <string name="package_name">com.fittracker.app</string>
-    <string name="custom_url_scheme">com.fittracker.app</string>
+    <string name="app_name">VisionFit AI</string>
+    <string name="title_activity_main">VisionFit AI</string>
+    <string name="package_name">com.VisionFit AI.app</string>
+    <string name="custom_url_scheme">com.VisionFit AI.app</string>
 </resources>

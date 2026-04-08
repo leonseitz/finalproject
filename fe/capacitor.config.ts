@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.fittracker.app",
-  appName: "FitTracker",
+  appId: "com.VisionFit AI.app",
+  appName: "VisionFit AI",
   webDir: "out",
   server: {
     androidScheme: "http",

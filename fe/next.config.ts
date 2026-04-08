@@ -6,9 +6,11 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   experimental: {
-    // @ts-ignore - turbopack root option is required for this setup
+    // @ts-ignore - turbopack resolveAlias for correct tailwindcss module path
     turbopack: {
-      root: path.resolve(process.cwd()),
+      resolveAlias: {
+        tailwindcss: path.join(__dirname, "node_modules/tailwindcss/index.css"),
+      },
     },
   },
 };

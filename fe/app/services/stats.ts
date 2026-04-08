@@ -63,11 +63,12 @@ const getAuthHeaders = () => {
   };
 };
 
+import { getApiBase } from "../lib/api";
 // Use strict 127.0.0.1 to match user.ts and avoid localhost/IPv6 issues
-const API_URL = "http://127.0.0.1:8000/api/stats";
+const API_URL = () => `${getApiBase()}/api/stats`;
 
 const getBaseUrl = () => {
-    return API_URL;
+    return API_URL();
 };
 
 export async function getDailyStats(date?: string): Promise<DailyStats> {

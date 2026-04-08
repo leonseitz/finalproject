@@ -1,4 +1,5 @@
-const API_URL = "http://127.0.0.1:8000/api";
+import { getApiBase } from "../lib/api";
+const API_URL = () => `${getApiBase()}/api`;
 
 export const getAuthToken = () => {
   if (typeof window !== "undefined") {
@@ -12,7 +13,7 @@ export const getUserProfile = async () => {
   if (!token) return null;
 
   try {
-    const res = await fetch(`${API_URL}/users/me`, {
+    const res = await fetch(`${API_URL()}/users/me`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -36,7 +37,7 @@ export const updateUserProfile = async (data: any) => {
   if (!token) return null;
 
   try {
-    const res = await fetch(`${API_URL}/users/me`, {
+    const res = await fetch(`${API_URL()}/users/me`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,

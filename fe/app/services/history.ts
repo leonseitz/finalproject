@@ -1,4 +1,5 @@
-const API_URL = "http://127.0.0.1:8000/api";
+import { getApiBase } from "../lib/api";
+const API_URL = () => `${getApiBase()}/api`;
 
 export interface SessionDetails {
   video_id: number;
@@ -29,7 +30,7 @@ export interface SessionDetails {
 
 export const getSessionDetails = async (videoId: string): Promise<SessionDetails> => {
   const token = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/exercise/session/${videoId}`, {
+  const res = await fetch(`${API_URL()}/exercise/session/${videoId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

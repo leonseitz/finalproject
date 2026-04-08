@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Mail, KeyRound, CheckCircle } from "lucide-react";
+import { getApiBase } from "../../lib/api";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function ForgotPasswordPage() {
     setSuccessMessage("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/forgot-password", {
+      const res = await fetch(`${getApiBase()}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -66,7 +67,7 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/reset-password", {
+      const res = await fetch(`${getApiBase()}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, new_password: newPassword }),

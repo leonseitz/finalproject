@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { getApiBase } from "../../lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/login", {
+      const res = await fetch(`${getApiBase()}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password }),
@@ -40,7 +41,6 @@ export default function LoginPage() {
       console.error("Login Error:", err);
       const errorMessage = err.message || "An error occurred";
       setError(errorMessage);
-      alert(`Login Error: ${errorMessage}\nURL: http://10.10.100.213:8000/api/auth/login`); // Debug alert for user
     } finally {
       setLoading(false);
     }
@@ -70,7 +70,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="mt-6 text-3xl font-bold tracking-tight text-white">
-            Fit<span className="text-cyan-400">Tracker</span>
+            VisionFit<span className="text-cyan-400">&nbsp;&nbsp;AI</span>
           </h1>
           <p className="mt-2 text-sm text-gray-400">Welcome back, please sign in</p>
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Lock, Phone, ArrowRight, Activity, Calendar, Hash, Eye, EyeOff, Mail } from "lucide-react";
 import Link from "next/link";
+import { getApiBase } from "../../lib/api";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function SignUpPage() {
         weight: formData.weight ? parseFloat(formData.weight) : null,
       };
 
-      const res = await fetch("http://10.10.100.238:8000/api/auth/signup", {
+      const res = await fetch(`${getApiBase()}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -70,7 +71,7 @@ export default function SignUpPage() {
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Create Profile
           </h1>
-          <p className="mt-2 text-sm text-gray-400">Enter your details to join FitTracker</p>
+          <p className="mt-2 text-sm text-gray-400">Enter your details to join VisionFit AI</p>
         </div>
 
         {/* Sign Up Form */}

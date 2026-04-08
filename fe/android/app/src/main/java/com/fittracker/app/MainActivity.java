@@ -1,4 +1,4 @@
-package com.fittracker.app;
+package com.VisionFit AI.app;
 
 import com.getcapacitor.BridgeActivity;
 
