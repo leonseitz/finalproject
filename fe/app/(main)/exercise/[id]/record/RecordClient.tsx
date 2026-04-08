@@ -385,6 +385,7 @@ function RecordContent() {
             
             // Auto Stop for Reps Target
             if (autoStop && targetType === "reps" && targetValue > 0 && data.count >= targetValue) {
+                 isAutoStoppedRef.current = true; // Mark as auto-stopped BEFORE calling toggleRecording
                  toggleRecording();
             }
           }
