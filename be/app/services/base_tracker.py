@@ -116,6 +116,8 @@ class BaseTracker(ABC):
         self.latest_landmarks = None
         self.is_tracking = False  # To control when to start counting
         self.current_rep_start_time = None # Initialize to avoid AttributeError
+        self.reps_history = []  # Initialize so _finish_rep works before reset()
+        self.current_rep_feedbacks = []  # Initialize so add_feedback works before reset()
 
     def process_landmarks(self, landmarks_data, timestamp_ms=0):
         """

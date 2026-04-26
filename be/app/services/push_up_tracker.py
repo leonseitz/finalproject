@@ -28,7 +28,7 @@ class PushUpTracker(BaseTracker):
             for point_idx in key_points:
                 if landmarks[point_idx].visibility < 0.5:
                     self.warning_message = "ไม่พบจุดตรวจจับ"
-                    return frame, None, None
+                    return frame
 
             # Calculate elbow angle
             elbow_angle = self.calculate_angle(
@@ -53,11 +53,13 @@ class PushUpTracker(BaseTracker):
                 self.warning_message += config['warnings']['elbow_too_low']
                 self.add_feedback("Elbows", "Too low")
 
-            # Track push-up movement
-            if elbow_angle > config['elbow_angle_up_threshold'] and self.direction == 1:
-                self.direction = 0  # Up position
+            # State machine: Up(0) -> Down(1) -> Up(0) = 1 complete rep
+            # direction=0: up position (arms extended), direction=1: down position (arms bent)
             if elbow_angle <= config['elbow_angle_down_threshold'] and self.direction == 0:
-                self.direction = 1  # Down position
+                self.direction = 1  # Moved to down position
+
+            if elbow_angle >= config['elbow_angle_up_threshold'] and self.direction == 1:
+                self.direction = 0  # Back to up position — rep complete
                 if self.is_tracking:
                     self.count += 1
                     self._finish_rep(self.count)
@@ -79,14 +81,14 @@ class PushUpTracker(BaseTracker):
             #                 DISPLAY_CONFIG['font'], DISPLAY_CONFIG['font_scale'],
             #                 DISPLAY_CONFIG['warning_label_color'], DISPLAY_CONFIG['font_thickness'])
             
-            return frame, elbow_angle, shoulder_angle
+            return frame
         except Exception as e:
             print("Error calculating push-up angle:", e)
-            return frame, None, None
+            return frame
     
     def _get_default_return_values(self, frame):
         """Return default values when no pose detected"""
-        return frame, None, None
+        return frame
     
     def get_stats(self):
         """Get current tracking statistics"""

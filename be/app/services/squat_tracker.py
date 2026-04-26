@@ -51,14 +51,19 @@ class SquatTracker(BaseTracker):
                 self.warning_message += config['warnings']['knee_angle_too_low']
                 self.add_feedback("Knee", "Knee too low")
             
-            # Track squat movement
+            # State machine: Stand(0) -> Squat(1) -> Stand(0) = 1 complete rep
+            # direction=0: standing position, direction=1: in squat position
             if hip_angle > config['hip_angle_up_threshold']:
-                self.direction = 0  # Standing position
-            if hip_angle < config['hip_angle_down_threshold'] and self.direction == 0:
-                self.direction = 1  # Squat position
-                if self.is_tracking:
+                # Back to standing — complete the rep if we were in squat position
+                if self.direction == 1 and self.is_tracking:
                     self.count += 1
+                    self.squat_depth = None  # reset depth tracking
+                    self._finish_rep(self.count)  # Record rep data to reps_history
                     print(f"Squat Count: {self.count}")
+                self.direction = 0  # Mark as standing
+
+            if hip_angle < config['hip_angle_down_threshold'] and self.direction == 0:
+                self.direction = 1  # Mark as in squat position
                 self.squat_depth = "Deep enough" if hip_angle < config['good_depth_threshold'] else "Increase depth"
                 if self.squat_depth == "Increase depth" and self.is_tracking:
                     self.add_feedback("Hips", "Not deep enough")
