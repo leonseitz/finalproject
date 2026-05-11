@@ -367,10 +367,18 @@ async def upload_video(
                 final_valid_duration = 0
                 if valid_duration > 0:
                     final_valid_duration = valid_duration
-                elif reps_list:
-                     final_valid_duration = sum(r.get('duration', 0) for r in reps_list)
                 else:
-                    final_valid_duration = duration # Fallback
+                    # For plank: use total_time from score_data (most accurate source)
+                    # because reps_list contains virtual reps whose duration sum may not equal actual elapsed_time
+                    try:
+                        score_info = json.loads(score_data) if isinstance(score_data, str) else score_data
+                        final_valid_duration = score_info.get('total_time', 0)
+                    except:
+                        pass
+                    if not final_valid_duration and reps_list:
+                        final_valid_duration = sum(r.get('duration', 0) for r in reps_list)
+                    if not final_valid_duration:
+                        final_valid_duration = duration  # Last resort fallback
                 
                 print(f"Goal Check: Target={active_goal.target_time_sec}, ValidDuration={final_valid_duration}, TotalDuration={duration}")
 

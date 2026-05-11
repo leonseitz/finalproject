@@ -109,7 +109,9 @@ class PlankTracker(BaseTracker):
             if effective_is_good:
                 # Start or continue timing
                 if self.is_paused:
-                    self.plank_start_time += time.time() - self.paused_time
+                    # Shift start_time forward by the duration we were paused,
+                    # so elapsed = now - start_time excludes all paused intervals
+                    self.plank_start_time = self.plank_start_time + (time.time() - self.paused_time)
                     self.is_paused = False
                 if self.plank_start_time == 0:
                     self.plank_start_time = time.time()
@@ -119,6 +121,9 @@ class PlankTracker(BaseTracker):
                 if not self.is_paused and self.plank_start_time != 0:
                     self.paused_time = time.time()
                     self.is_paused = True
+                    # Snapshot elapsed_time at the moment of pause,
+                    # so get_session_summary() always has the correct value
+                    self.elapsed_time = self.paused_time - self.plank_start_time
                     # Penalty already applied above
                     
             return frame, elbow_angle, body_angle
@@ -137,15 +142,15 @@ class PlankTracker(BaseTracker):
         with scoring based on pauses and duration.
         """
         # Score calculation for Plank:
-        # Quality Score based on Pauses:
-        # 0 Pauses = 5 (Perfect)
-        # 1 Pause = 3 (Minor issues)
-        # >1 Pauses = 1 (Major issues)
-        
+        # Quality Score based on pause_count (number of form breaks that exceeded the 3s grace period).
+        # Using pause_count (not len(feedbacks)) keeps quality_score and accuracy_percent consistent.
+        # 0 pauses = 5 (Perfect)
+        # 1 pause  = 3 (Minor issues)
+        # 2+ pauses = 1 (Major issues)
         quality_score = 5
         if self.pause_count == 1:
             quality_score = 3
-        elif self.pause_count > 1:
+        elif self.pause_count >= 2:
             quality_score = 1
             
         # usage of self.current_rep_feedbacks might be tricky here since we don't finish reps
@@ -153,31 +158,39 @@ class PlankTracker(BaseTracker):
         
         # Calculate "Virtual Reps" based on duration (e.g., 10 seconds = 1 rep)
         # using max(1, ...) to ensure at least 1 rep if detailed
-        virtual_reps = max(1, int(self.elapsed_time / 10))
+        # Use round() so that e.g. 29.9s -> round(2.99) = 3 reps, not int() which truncates to 2
+        virtual_reps = max(1, round(self.elapsed_time / 10))
         
         # Total Score = Quality Score * Virtual Reps
         total_score = quality_score * virtual_reps
             
-        # Create the single rep data representing the session
-        rep_data = {
-            "rep_number": 1,
-            "score": quality_score, # Store quality score here for "average" display
-            "duration": round(self.elapsed_time, 2),
-            "warning_count": self.pause_count, # Use pause count as warning metric
-            "feedbacks": list(self.current_rep_feedbacks),
-            "timestamp": time.time()
-        }
-        
-        single_rep_history = [rep_data]
+        # Create one rep entry per virtual rep (every 10 seconds = 1 rep)
+        # Feedbacks/warnings are placed in the last rep since they accumulate over the session
+        reps_history = []
+        for i in range(virtual_reps):
+            is_last_rep = (i == virtual_reps - 1)
+            rep_start = i * 10
+            rep_end = min((i + 1) * 10, self.elapsed_time)
+            rep_data = {
+                "rep_number": i + 1,
+                "score": quality_score,
+                "duration": round(rep_end - rep_start, 2),
+                "warning_count": self.pause_count if is_last_rep else 0,
+                "feedbacks": list(self.current_rep_feedbacks) if is_last_rep else [],
+                "timestamp": time.time()
+            }
+            reps_history.append(rep_data)
         
         return {
             "total_reps": virtual_reps, 
             "total_score": total_score,
             "average_score": quality_score,
-            "max_score": quality_score, 
+            "max_score": 5 * virtual_reps,  # Max possible score = perfect quality (5) * virtual reps
             "min_score": quality_score,
-            "accuracy_percent": 100 if self.pause_count == 0 else (50 if self.pause_count == 1 else 0), # Rough estimate
-            "reps_history": single_rep_history,
+            # accuracy_percent mirrors quality_score: 5→100%, 3→60%, 1→20%
+            # This keeps the displayed accuracy consistent with the actual score deduction.
+            "accuracy_percent": round((quality_score / 5) * 100),
+            "reps_history": reps_history,
             "total_time": round(self.elapsed_time, 2)
         }
 
